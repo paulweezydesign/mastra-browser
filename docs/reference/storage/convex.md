@@ -1,0 +1,232 @@
+> Discover all available pages from the documentation index: https://mastra.ai/llms.txt
+
+# Convex storage
+
+The Convex storage implementation provides a serverless storage solution using [Convex](https://convex.dev), a full-stack TypeScript development platform with real-time sync and automatic caching.
+
+> **Observability Not Supported:** Convex storage **doesn't support the observability domain**. Traces from the `MastraStorageExporter` can't be persisted to Convex, and [Studio's](https://mastra.ai/docs/studio/overview) observability features won't work with Convex as your only storage provider. To enable observability, use [composite storage](https://mastra.ai/reference/storage/composite) to route observability data to a supported provider like ClickHouse.
+
+> **Record Size Limit:** Convex enforces a **1 MiB maximum record size**. This limit can be exceeded when storing messages with base64-encoded attachments such as images. See [Handling large attachments](https://mastra.ai/docs/memory/memory-processors) for workarounds including uploading attachments to external storage like S3, Cloudflare R2, or [Convex file storage](https://docs.convex.dev/file-storage).
+
+## Installation
+
+**npm**:
+
+```bash
+npm install @mastra/convex@latest
+```
+
+**pnpm**:
+
+```bash
+pnpm add @mastra/convex@latest
+```
+
+**Yarn**:
+
+```bash
+yarn add @mastra/convex@latest
+```
+
+**Bun**:
+
+```bash
+bun add @mastra/convex@latest
+```
+
+## Convex setup
+
+Before using `ConvexStore`, set up the Convex schema and storage handler in your Convex project. The schema example below includes the full `ConvexStore` and `ConvexServerCache` setup. If you only use `ConvexStore`, omit `mastraCacheTable` and `mastraCacheListItemsTable`; if you use `ConvexServerCache`, include those tables and create the cache handler.
+
+### 1. Set up Convex Schema
+
+In `convex/schema.ts`:
+
+```typescript
+import { defineSchema } from 'convex/server'
+import {
+  mastraThreadsTable,
+  mastraMessagesTable,
+  mastraResourcesTable,
+  mastraWorkflowSnapshotsTable,
+  mastraScoresTable,
+  mastraObservationalMemoryTable,
+  mastraVectorIndexesTable,
+  mastraVectorsTable,
+  mastraCacheTable,
+  mastraCacheListItemsTable,
+  mastraDocumentsTable,
+} from '@mastra/convex/schema'
+
+export default defineSchema({
+  mastra_threads: mastraThreadsTable,
+  mastra_messages: mastraMessagesTable,
+  mastra_resources: mastraResourcesTable,
+  mastra_workflow_snapshots: mastraWorkflowSnapshotsTable,
+  mastra_scorers: mastraScoresTable,
+  mastra_observational_memory: mastraObservationalMemoryTable,
+  mastra_vector_indexes: mastraVectorIndexesTable,
+  mastra_vectors: mastraVectorsTable,
+  mastra_cache: mastraCacheTable,
+  mastra_cache_list_items: mastraCacheListItemsTable,
+  mastra_documents: mastraDocumentsTable,
+})
+```
+
+### 2. Create the Storage Handler
+
+In `convex/mastra/storage.ts`:
+
+```typescript
+import { mastraStorage } from '@mastra/convex/server'
+
+export const handle = mastraStorage
+```
+
+If you use `ConvexServerCache`, create `convex/mastra/cache.ts`:
+
+```typescript
+import { mastraCache } from '@mastra/convex/server'
+
+export const handle = mastraCache
+```
+
+### 3. Deploy to Convex
+
+```bash
+npx convex dev
+# or for production
+npx convex deploy
+```
+
+## Usage
+
+```typescript
+import { ConvexServerCache, ConvexStore } from '@mastra/convex'
+
+const storage = new ConvexStore({
+  id: 'convex-storage',
+  deploymentUrl: process.env.CONVEX_URL!,
+  adminAuthToken: process.env.CONVEX_ADMIN_KEY!,
+})
+
+const cache = new ConvexServerCache({
+  deploymentUrl: process.env.CONVEX_URL!,
+  adminAuthToken: process.env.CONVEX_ADMIN_KEY!,
+})
+```
+
+## ConvexStore parameters
+
+**deploymentUrl** (`string`): Convex deployment URL (e.g., https\://your-project.convex.cloud)
+
+**adminAuthToken** (`string`): Convex admin authentication token for backend access
+
+**storageFunction** (`string`): Path to the storage mutation function (default: 'mastra/storage:handle') (Default: `mastra/storage:handle`)
+
+## ConvexServerCache parameters
+
+**deploymentUrl** (`string`): Convex deployment URL (e.g., https\://your-project.convex.cloud)
+
+**adminAuthToken** (`string`): Convex admin authentication token for backend access
+
+**cacheFunction** (`string`): Path to the cache mutation function for ConvexServerCache (default: 'mastra/cache:handle') (Default: `mastra/cache:handle`)
+
+**requestTimeoutMs** (`number`): Timeout for Convex cache mutation requests in milliseconds. Set to 0 to disable the client-side timeout. (Default: `30000`)
+
+**keyPrefix** (`string`): Prefix applied to ConvexServerCache keys. clear() removes rows whose stored prefix exactly matches this value. (Default: `mastra:cache:`)
+
+**ttlMs** (`number`): Default ConvexServerCache TTL in milliseconds. Set to 0 to disable expiry. (Default: `300000`)
+
+## Constructor examples
+
+```ts
+import { ConvexServerCache, ConvexStore } from '@mastra/convex'
+
+// Basic configuration
+const store = new ConvexStore({
+  id: 'convex-storage',
+  deploymentUrl: 'https://your-project.convex.cloud',
+  adminAuthToken: 'your-admin-token',
+})
+
+// With custom storage function path
+const storeCustom = new ConvexStore({
+  id: 'convex-storage',
+  deploymentUrl: 'https://your-project.convex.cloud',
+  adminAuthToken: 'your-admin-token',
+  storageFunction: 'custom/path:handler',
+})
+
+// Server cache for durable stream replay and response caching
+const cache = new ConvexServerCache({
+  deploymentUrl: 'https://your-project.convex.cloud',
+  adminAuthToken: 'your-admin-token',
+  cacheFunction: 'mastra/cache:handle',
+})
+```
+
+## Server cache
+
+`ConvexServerCache` implements Mastra's server cache contract with Convex. Use it when you want durable cache state for features such as resumable durable-agent streams, workflow stream replay, or response caching.
+
+`ConvexServerCache` stores list entries as separate Convex documents. This avoids growing a stream replay list inside one document and helps stay within Convex's record size limit.
+
+Each scalar cache value and each list item is stored as one Convex row and must stay within Convex's row-size limits. Very large lists are still bounded by Convex query limits when replaying a range.
+
+Cache cleanup and `clear()` run in bounded batches. A single client call can loop through up to 1,000 Convex mutations, with each mutation handling up to 25 list items. While `clear()` is cleaning a key, reads for that key can return empty results until cleanup finishes.
+
+For very large cache namespaces, clear incrementally or use narrower prefixes to avoid long-running cleanup operations.
+
+During batched cleanup, cache metadata can temporarily use an internal `deleted` state. The next cleanup pass removes those rows. Avoid writing new values with the same prefix until `clear()` finishes.
+
+`clear()` only removes rows whose stored `keyPrefix` exactly matches the configured `keyPrefix`. It doesn't clear nested prefixes by string prefix matching. Each `listPush()` refreshes the list TTL using the cache's configured `ttlMs`.
+
+Use a non-empty `keyPrefix` unless you intentionally want `clear()` to remove every cache key in the deployment. Expired list rows are reclaimed incrementally during reads and writes. `clear()` removes all rows for the prefix.
+
+`ConvexServerCache` works best for durable replay of moderate-frequency events. For high-frequency token streams, prefer batching events or using a lower-latency cache backend.
+
+`ConvexServerCache` doesn't replace a distributed pub/sub transport. If your app needs live cross-process event delivery, configure a production pub/sub backend separately.
+
+## Additional notes
+
+### Schema Management
+
+The storage implementation uses typed Convex tables for each Mastra domain:
+
+| Domain               | Convex Table                  | Purpose                                   |
+| -------------------- | ----------------------------- | ----------------------------------------- |
+| Threads              | `mastra_threads`              | Conversation threads                      |
+| Messages             | `mastra_messages`             | Chat messages                             |
+| Resources            | `mastra_resources`            | User working memory                       |
+| Observational Memory | `mastra_observational_memory` | Observational memory generations          |
+| Workflows            | `mastra_workflow_snapshots`   | Workflow state                            |
+| Scorers              | `mastra_scorers`              | Evaluation data                           |
+| Cache                | `mastra_cache`                | Cache values, counters, and list metadata |
+| Cache Items          | `mastra_cache_list_items`     | Cache list entries                        |
+| Fallback             | `mastra_documents`            | Unknown tables                            |
+
+### Observational memory
+
+`ConvexStore` supports [observational memory](https://mastra.ai/docs/memory/observational-memory). Add `mastraObservationalMemoryTable` to your Convex schema and redeploy with `npx convex deploy` to enable it. Existing deployments created before this table was added need the same schema update.
+
+### Architecture
+
+All typed tables include:
+
+- An `id` field for Mastra's record ID (distinct from Convex's auto-generated `_id`)
+- A `by_record_id` index for efficient lookups by Mastra ID
+
+This design ensures compatibility with Mastra's storage contract while using Convex's automatic indexing and real-time capabilities.
+
+### Environment variables
+
+Set these environment variables for your deployment:
+
+- `CONVEX_URL`: Your Convex deployment URL
+- `CONVEX_ADMIN_KEY`: Admin authentication token (get from Convex dashboard)
+
+## Related
+
+- [Convex Vector Store](https://mastra.ai/reference/vectors/convex)
+- [Convex Documentation](https://docs.convex.dev/)

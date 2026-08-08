@@ -1,0 +1,46 @@
+> Discover all available pages from the documentation index: https://mastra.ai/llms.txt
+
+# Tools API
+
+The Tools API provides methods to interact with and execute tools available in the Mastra platform.
+
+## Getting all tools
+
+Retrieve a list of all available tools:
+
+```typescript
+const tools = await mastraClient.listTools()
+```
+
+## Working with a specific tool
+
+Get an instance of a specific tool:
+
+```typescript
+const tool = mastraClient.getTool('tool-id')
+```
+
+## Tool methods
+
+### Get Tool Details
+
+Retrieve detailed information about a tool:
+
+```typescript
+const details = await tool.details()
+```
+
+### Execute Tool
+
+Execute a tool with specific arguments:
+
+```typescript
+const result = await tool.execute({
+  args: {
+    param1: 'value1',
+    param2: 'value2',
+  },
+  threadId: 'thread-1', // Optional: Thread context
+  resourceId: 'resource-1', // Optional: Resource identifier
+})
+```

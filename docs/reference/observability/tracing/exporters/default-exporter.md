@@ -1,0 +1,182 @@
+> Discover all available pages from the documentation index: https://mastra.ai/llms.txt
+
+# DefaultExporter
+
+**Deprecated in `@mastra/observability@1.12.0`** in favor of [`MastraStorageExporter`](https://mastra.ai/reference/observability/tracing/exporters/mastra-storage-exporter).
+
+> **Deprecated:** `DefaultExporter` is retained for backward compatibility and will be removed in a future major version. Use [`MastraStorageExporter`](https://mastra.ai/reference/observability/tracing/exporters/mastra-storage-exporter) for new projects. Both classes share the same constructor, configuration, and runtime behavior. `DefaultExporter` keeps its original `mastra-default-observability-exporter` exporter `name` so monitoring rules built against it keep working.
+
+Persists observability events to Mastra Storage with automatic batching and retry logic.
+
+## Constructor
+
+```typescript
+new DefaultExporter(config?: DefaultExporterConfig)
+```
+
+## `DefaultExporterConfig`
+
+```typescript
+interface DefaultExporterConfig extends BaseExporterConfig {
+  /** Maximum number of spans per batch. Default: 1000 */
+  maxBatchSize?: number
+
+  /** Maximum total buffer size before emergency flush. Default: 10000 */
+  maxBufferSize?: number
+
+  /** Maximum time to wait before flushing batch in milliseconds. Default: 5000 */
+  maxBatchWaitMs?: number
+
+  /** Maximum number of retry attempts. Default: 4 */
+  maxRetries?: number
+
+  /** Base retry delay in milliseconds (uses exponential backoff). Default: 500 */
+  retryDelayMs?: number
+
+  /** Tracing storage strategy or 'auto' for automatic selection. Default: 'auto' */
+  strategy?: TracingStorageStrategy | 'auto'
+}
+```
+
+Extends `BaseExporterConfig`, which includes:
+
+- `logger?: IMastraLogger` - Logger instance
+- `logLevel?: LogLevel | 'debug' | 'info' | 'warn' | 'error'` - Log level (default: INFO)
+
+## `TracingStorageStrategy`
+
+```typescript
+type TracingStorageStrategy = 'realtime' | 'batch-with-updates' | 'insert-only'
+```
+
+### Strategy Behaviors
+
+- **realtime**: Immediately persists each event to storage
+- **batch-with-updates**: Batches creates and updates separately, applies in order
+- **insert-only**: Only processes SPAN\_ENDED events, ignores updates
+
+## Properties
+
+```typescript
+readonly name = 'mastra-default-observability-exporter';
+```
+
+## Methods
+
+### init
+
+```typescript
+init(options: InitExporterOptions): void
+```
+
+Initializes the exporter after dependencies are ready. Resolves tracing strategy based on storage capabilities.
+
+### `exportTracingEvent`
+
+```typescript
+async exportTracingEvent(event: TracingEvent): Promise<void>
+```
+
+Processes a tracing event according to the resolved strategy.
+
+### flush
+
+```typescript
+async flush(): Promise<void>
+```
+
+Force flushes any buffered events to storage without shutting down the exporter. Useful in serverless environments where you need to ensure spans are exported before the runtime terminates.
+
+### shutdown
+
+```typescript
+async shutdown(): Promise<void>
+```
+
+Flushes remaining buffered events and performs cleanup.
+
+## Automatic strategy selection
+
+When `strategy: 'auto'` (default), the exporter queries the storage adapter for its capabilities:
+
+```typescript
+interface TracingStrategy {
+  /** Strategies supported by this adapter */
+  supported: TracingStorageStrategy[]
+
+  /** Preferred strategy for optimal performance */
+  preferred: TracingStorageStrategy
+}
+```
+
+The exporter will:
+
+1. Use the storage adapter's preferred strategy if available
+2. Fall back to the first supported strategy if preferred isn't available
+3. Log a warning if a user-specified strategy isn't supported
+
+## Batching behavior
+
+### Flush Triggers
+
+The buffer flushes when any of these conditions are met:
+
+- Buffer size reaches `maxBatchSize`
+- Time since first buffered event exceeds `maxBatchWaitMs`
+- Buffer size reaches `maxBufferSize` (emergency flush)
+- `shutdown()` is called
+
+### Retry Logic
+
+Failed flushes are retried with exponential backoff:
+
+- Retry delay: `retryDelayMs * 2^attempt`
+- Maximum attempts: `maxRetries`
+- Batch is dropped after all retries fail
+
+When storage doesn't support a signal or retries are exhausted, `DefaultExporter` emits an `ObservabilityDropEvent` through `onDroppedEvent` handlers registered on exporters and bridges. The drop event includes the signal, reason, count, exporter name, storage name when known, and sanitized error details.
+
+### Out-of-Order Handling
+
+For `batch-with-updates` strategy:
+
+- Tracks which spans have been created
+- Rejects updates/ends for spans not yet created
+- Logs warnings for out-of-order events
+- Maintains sequence numbers for ordered updates
+
+## Usage
+
+```typescript
+import { DefaultExporter } from '@mastra/observability'
+
+// Default configuration
+const exporter = new DefaultExporter()
+
+// Custom batching configuration
+const customExporter = new DefaultExporter({
+  maxBatchSize: 500,
+  maxBatchWaitMs: 2000,
+  strategy: 'batch-with-updates',
+  logLevel: 'debug',
+})
+```
+
+## See also
+
+### Documentation
+
+- [Tracing Overview](https://mastra.ai/docs/observability/tracing/overview): Complete guide
+- [Exporters](https://mastra.ai/docs/observability/integrations/overview): Exporter concepts
+
+### Other Exporters
+
+- [CloudExporter](https://mastra.ai/reference/observability/tracing/exporters/cloud-exporter): Mastra platform
+- [ConsoleExporter](https://mastra.ai/reference/observability/tracing/exporters/console-exporter): Debug output
+- [Langfuse](https://mastra.ai/reference/observability/tracing/exporters/langfuse): Langfuse integration
+- [Braintrust](https://mastra.ai/reference/observability/tracing/exporters/braintrust): Braintrust integration
+
+### Reference
+
+- [Configuration](https://mastra.ai/reference/observability/tracing/configuration): Configuration options
+- [Interfaces](https://mastra.ai/reference/observability/tracing/interfaces): Type definitions

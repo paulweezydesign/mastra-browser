@@ -1,0 +1,73 @@
+> Discover all available pages from the documentation index: https://mastra.ai/llms.txt
+
+# MastraAuthBetterAuth class
+
+The `MastraAuthBetterAuth` class provides authentication for Mastra applications using Better Auth. It verifies incoming requests with Better Auth sessions and integrates with the Mastra server using the `auth` option.
+
+## Usage example
+
+```typescript
+import { Mastra } from '@mastra/core'
+import { MastraAuthBetterAuth } from '@mastra/auth-better-auth'
+import { betterAuth } from 'better-auth'
+
+// Create your Better Auth instance
+const auth = betterAuth({
+  database: {
+    provider: 'postgresql',
+    url: process.env.DATABASE_URL,
+  },
+  emailAndPassword: {
+    enabled: true,
+  },
+  baseURL: process.env.BETTER_AUTH_URL,
+  secret: process.env.BETTER_AUTH_SECRET,
+})
+
+export const mastra = new Mastra({
+  server: {
+    auth: new MastraAuthBetterAuth({
+      auth,
+    }),
+  },
+})
+```
+
+## Constructor parameters
+
+**auth** (`Auth`): Your Better Auth instance created via betterAuth({ ... }). This is required and must be properly configured with a supported database provider.
+
+**name** (`string`): Custom name for the auth provider instance. (Default: `'better-auth'`)
+
+**authorizeUser** (`(user: BetterAuthUser, request: HonoRequest) => Promise<boolean> | boolean`): Custom authorization function to determine if a user should be granted access. Called after session verification. By default, allows all authenticated users with valid sessions.
+
+**public** (`Array<string | RegExp | [string, Methods | Methods[]]>`): Public routes that do not require authentication. Supports exact paths, wildcards, and path params.
+
+**protected** (`Array<string | RegExp | [string, Methods | Methods[]]>`): Protected routes that require authentication. Supports exact paths, wildcards, and path params.
+
+## `BetterAuthUser` type
+
+The `BetterAuthUser` type contains the session and user information returned by Better Auth:
+
+```typescript
+interface BetterAuthUser {
+  session: Session
+  user: User
+}
+```
+
+- `session`: The Better Auth session object containing session metadata
+- `user`: The authenticated user object with user details
+
+The `Session` and `User` types are exported by the Better Auth package.
+
+## Matching rules
+
+- `public` and `protected` accept exact paths, wildcard patterns (like `/api/*`), and path params (like `/users/:id`).
+- For method-specific rules, use tuples like `["/api/agents", ["GET", "POST"]]`.
+- If a route matches both `public` and `protected`, `public` wins and no auth is required.
+- If neither matches, routes are treated as protected by default (unless a route is explicitly marked `requiresAuth: false`).
+
+## Related
+
+[MastraAuthBetterAuth Class](https://mastra.ai/docs/server/auth/better-auth)
