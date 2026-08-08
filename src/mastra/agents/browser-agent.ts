@@ -17,6 +17,11 @@ export const browserAgent = new Agent({
       observationalMemory: {
         // Use the same model as the agent (default OM model needs Google).
         model: () => getBrowserModel(),
+        observation: {
+          // Browser screenshots in history break DashScope/text-only OM calls
+          // ("Unexpected item type in content" / "does not support image inputs").
+          observeAttachments: false,
+        },
       },
     },
   }),

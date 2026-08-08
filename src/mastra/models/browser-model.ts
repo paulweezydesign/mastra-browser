@@ -10,13 +10,13 @@ function resolveModelProvider(value: string | undefined): ModelProvider {
   switch (value) {
     case undefined:
     case '':
-    case 'lmstudio':
-      return 'lmstudio';
     case 'dashscope':
       return 'dashscope';
+    case 'lmstudio':
+      return 'lmstudio';
     default: {
       throw new Error(
-        `Invalid MODEL_PROVIDER="${value}". Expected one of: lmstudio, dashscope.`,
+        `Invalid MODEL_PROVIDER="${value}". Expected one of: dashscope, lmstudio.`,
       );
     }
   }
@@ -41,16 +41,16 @@ function getLmStudioBrowserModel(): OpenAICompatibleConfig {
 
 /**
  * Resolve the browser agent model from MODEL_PROVIDER.
- * Defaults to local LM Studio; set MODEL_PROVIDER=dashscope for Alibaba.
+ * Defaults to Alibaba DashScope; set MODEL_PROVIDER=lmstudio for local LM Studio.
  */
 export function getBrowserModel(): OpenAICompatibleConfig {
   const provider = resolveModelProvider(process.env.MODEL_PROVIDER);
 
   switch (provider) {
-    case 'lmstudio':
-      return getLmStudioBrowserModel();
     case 'dashscope':
       return getDashScopeBrowserModel();
+    case 'lmstudio':
+      return getLmStudioBrowserModel();
     default: {
       const _exhaustive: never = provider;
       throw new Error(`Unhandled MODEL_PROVIDER: ${_exhaustive}`);
