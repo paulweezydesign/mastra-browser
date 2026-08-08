@@ -1,7 +1,7 @@
 import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 import { browser } from '../browsers/agent-browser';
-import { getBrowserModel } from '../models/dashscope';
+import { getBrowserModel } from '../models/browser-model';
 
 export const browserAgent = new Agent({
   id: 'browser-agent',
@@ -15,13 +15,13 @@ export const browserAgent = new Agent({
       lastMessages: 20,
       // Requires Mastra storage (configured in src/mastra/index.ts).
       observationalMemory: {
-        // Use the same DashScope model as the agent (default OM model needs Google).
+        // Use the same model as the agent (default OM model needs Google).
         model: () => getBrowserModel(),
       },
     },
   }),
   defaultOptions: {
-    maxSteps: 60,
+    maxSteps: 500,
   },
   instructions: `You are a web automation assistant with a persistent secure browser profile.
 Cookies and login sessions (including Gmail) are saved between runs.
