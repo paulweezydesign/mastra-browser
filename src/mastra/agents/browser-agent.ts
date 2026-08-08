@@ -2,6 +2,37 @@ import { Agent } from '@mastra/core/agent';
 import { Memory } from '@mastra/memory';
 import { browser } from '../browsers/agent-browser';
 import { getBrowserModel } from '../models/browser-model';
+import { SystemMessageFirstProcessor } from '../processors/system-message-first';
+
+/**
+ * Observational Memory injects extra system messages (observations +
+ * continuation reminders). Many local GGUF chat templates (Qwen/Qwythos in
+ * LM Studio/Ollama) require the system message to be first and throw:
+ * "System message must be at the beginning."
+ *
+ * Default: off for local providers. Opt in with ENABLE_OBSERVATIONAL_MEMORY=true
+ * (best with cloud models that tolerate mid-thread system messages).
+ */
+function shouldEnableObservationalMemory(): boolean {
+  if (process.env.ENABLE_OBSERVATIONAL_MEMORY === 'true') {
+    return true;
+  }
+  if (process.env.ENABLE_OBSERVATIONAL_MEMORY === 'false') {
+    return false;
+  }
+  const provider = process.env.MODEL_PROVIDER?.trim() || 'ollama';
+  return provider === 'dashscope';
+}
+
+const observationalMemory = shouldEnableObservationalMemory()
+  ? {
+      model: () => getBrowserModel(),
+      observation: {
+        // Browser screenshots break text-only / DashScope OM calls.
+        observeAttachments: false as const,
+      },
+    }
+  : false;
 
 export const browserAgent = new Agent({
   id: 'browser-agent',
@@ -10,19 +41,12 @@ export const browserAgent = new Agent({
     'A secure browser assistant with a persistent login profile for authenticated sites like Gmail.',
   model: () => getBrowserModel(),
   browser,
+  // Coalesce system messages to the front for strict local chat templates.
+  inputProcessors: [new SystemMessageFirstProcessor()],
   memory: new Memory({
     options: {
       lastMessages: 20,
-      // Requires Mastra storage (configured in src/mastra/index.ts).
-      observationalMemory: {
-        // Use the same model as the agent (default OM model needs Google).
-        model: () => getBrowserModel(),
-        observation: {
-          // Browser screenshots in history break DashScope/text-only OM calls
-          // ("Unexpected item type in content" / "does not support image inputs").
-          observeAttachments: false,
-        },
-      },
+      observationalMemory,
     },
   }),
   defaultOptions: {

@@ -9,6 +9,10 @@ import {
 } from '@mastra/observability';
 import { browserAgent } from './agents/browser-agent';
 import { MastraEditor } from '@mastra/editor';
+import {
+  createLmStudioGateway,
+  createOllamaGateway,
+} from './gateways/openai-compatible-local';
 
 export const mastra = new Mastra({
   // LibSQL for app/memory data; DuckDB for traces/metrics/logs (LibSQL lacks metrics).
@@ -26,6 +30,11 @@ export const mastra = new Mastra({
   }),
   agents: { browserAgent },
   editor: new MastraEditor(),
+  // Studio model picker reads these; models are listed live from /v1/models.
+  gateways: {
+    ollama: createOllamaGateway(),
+    lmstudio: createLmStudioGateway(),
+  },
   observability: new Observability({
     configs: {
       default: {
