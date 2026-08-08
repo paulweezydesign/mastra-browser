@@ -1,0 +1,7 @@
+allowBuilds:
+  agent-browser: true
+  edgedriver: true
+  esbuild: true
+  geckodriver: true
+minimumReleaseAgeExclude:
+  - '@types/node@26.2.0'
