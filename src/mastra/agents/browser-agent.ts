@@ -13,6 +13,11 @@ export const browserAgent = new Agent({
   memory: new Memory({
     options: {
       lastMessages: 20,
+      // Requires Mastra storage (configured in src/mastra/index.ts).
+      observationalMemory: {
+        // Use the same DashScope model as the agent (default OM model needs Google).
+        model: () => getBrowserModel(),
+      },
     },
   }),
   defaultOptions: {

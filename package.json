@@ -17,6 +17,7 @@
     "@mastra/editor": "^0.13.11",
     "@mastra/libsql": "^1.19.0",
     "@mastra/memory": "^1.26.0",
+    "@mastra/observability": "^1.16.5",
     "playwright": "^1.62.1"
   },
   "devDependencies": {

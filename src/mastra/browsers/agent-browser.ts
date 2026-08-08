@@ -28,12 +28,14 @@ const profile = resolveBrowserProfile();
 // Ensure the profile exists with owner-only permissions before Chromium creates files in it.
 mkdirSync(profile, { recursive: true, mode: 0o700 });
 
+// cdpUrl attaches to an already-running browser — profile/executablePath are
+// launch-only and must not be combined with it.
 export const browser = cdpUrl
   ? new AgentBrowser({
       headless,
       cdpUrl,
       scope: 'shared',
-      ...(executablePath ? { executablePath } : {}),
+      timeout: 60_000,
     })
   : new AgentBrowser({
       headless,
