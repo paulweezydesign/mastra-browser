@@ -1,6 +1,8 @@
 import { Mastra } from '@mastra/core/mastra';
 import { LibSQLStore } from '@mastra/libsql';
 import { browserAgent } from './agents/browser-agent';
+import { MastraEditor } from '@mastra/editor';
+
 
 export const mastra = new Mastra({
   storage: new LibSQLStore({
@@ -8,4 +10,5 @@ export const mastra = new Mastra({
     url: 'file:./mastra.db',
   }),
   agents: { browserAgent },
+  editor: new MastraEditor(),
 });
