@@ -1,0 +1,14 @@
+node_modules
+dist
+.mastra
+.env
+.env.*
+!.env.example
+*.db
+*.db-*
+mastra.db
+mastra.db-*
+*.duckdb
+*.duckdb.wal
+mastra-browser.zip
+*.zip
