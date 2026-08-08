@@ -45,11 +45,11 @@ export function resolveDashScopeModelId(): string {
  * OpenAI-compatible DashScope config for Mastra's model router.
  * Uses providerId/modelId so raw DashScope ids (without a slash) work.
  */
-export function getBrowserModel(): OpenAICompatibleConfig {
+export function getDashScopeBrowserModel(): OpenAICompatibleConfig {
   const apiKey = process.env.DASHSCOPE_API_KEY;
   if (!apiKey) {
     throw new Error(
-      'DASHSCOPE_API_KEY is required. Copy .env.example to .env and set your Alibaba Model Studio key.',
+      'DASHSCOPE_API_KEY is required when MODEL_PROVIDER=dashscope. Copy .env.example to .env and set your Alibaba Model Studio key.',
     );
   }
 
