@@ -12,3 +12,8 @@ mastra.db-*
 *.duckdb.wal
 mastra-browser.zip
 *.zip
+
+# Persistent browser profiles contain cookies / auth tokens
+.browser-profiles/
+auth-state.json
+*.storage-state.json

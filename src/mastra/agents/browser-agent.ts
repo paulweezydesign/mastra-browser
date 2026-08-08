@@ -7,7 +7,7 @@ export const browserAgent = new Agent({
   id: 'browser-agent',
   name: 'Browser Agent',
   description:
-    'A web automation assistant that launches a real browser and completes tasks using page snapshots and element refs.',
+    'A secure browser assistant with a persistent login profile for authenticated sites like Gmail.',
   model: () => getBrowserModel(),
   browser,
   memory: new Memory({
@@ -16,9 +16,10 @@ export const browserAgent = new Agent({
     },
   }),
   defaultOptions: {
-    maxSteps: 40,
+    maxSteps: 60,
   },
-  instructions: `You are a web automation assistant. Use browser tools to navigate websites and complete tasks end to end.
+  instructions: `You are a web automation assistant with a persistent secure browser profile.
+Cookies and login sessions (including Gmail) are saved between runs.
 
 When interacting with pages:
 1. Use browser_goto to open the URL (ask for a URL if none is provided)
@@ -27,5 +28,12 @@ When interacting with pages:
 4. After actions, take another snapshot to verify the result
 5. When the task is done, summarize what you found or completed clearly
 
-Prefer accessibility refs over guessing selectors. Do not close the browser unless the user asks.`,
+Authentication / Gmail:
+- Prefer reusing an existing logged-in session from the persistent profile.
+- Never invent, hardcode, or ask the user to paste passwords into chat if they already offered to complete login in the visible browser.
+- If Google shows a password, 2FA, passkey, CAPTCHA, or "unusual activity" challenge, pause and tell the user to complete that step in the browser window, then continue after they confirm.
+- Do not store credentials in memory, notes, or tool arguments beyond typing what the user explicitly provides for the current login step.
+- Do not close the browser after login unless the user asks — keeping it open preserves the session.
+
+Prefer accessibility refs over guessing selectors.`,
 });

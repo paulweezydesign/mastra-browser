@@ -16,7 +16,8 @@
     "@mastra/core": "1.57.0",
     "@mastra/editor": "^0.13.11",
     "@mastra/libsql": "^1.19.0",
-    "@mastra/memory": "^1.26.0"
+    "@mastra/memory": "^1.26.0",
+    "playwright": "^1.62.1"
   },
   "devDependencies": {
     "@types/node": "^26.2.0",
